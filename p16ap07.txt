@@ -1,0 +1,113 @@
+000100  IDENTIFICATION DIVISION.                                        00010000
+000200  PROGRAM-ID. P16AP07.                                            00020010
+000300  ENVIRONMENT DIVISION.                                           00030000
+000400  INPUT-OUTPUT SECTION.                                           00040000
+000500  FILE-CONTROL.                                                   00050000
+000600     SELECT REPORT-FILE ASSIGN TO REPFILE                         00060000
+000700     FILE STATUS IS WS-REP-STAT.                                  00070000
+000800  DATA DIVISION.                                                  00080000
+000900  FILE SECTION.                                                   00090000
+001000  FD REPORT-FILE                                                  00100000
+001100      RECORD CONTAINS 80 CHARACTERS                               00110000
+001200      RECORDING MODE IS F.                                        00120000
+001300  01  REPORT-RECORD PIC X(80).                                    00130000
+001400  WORKING-STORAGE SECTION.                                        00140000
+001500   01  WS-EID  PIC S9(04) USAGE COMP.                             00150013
+001600   01  SHARE-RECORD.                                              00160001
+001700    10 E-NO                 PIC S9(4) USAGE COMP.                 00170001
+001800    10 SHR-ID               PIC S9(4) USAGE COMP.                 00180001
+001900    10 SHR-SYM              PIC X(5).                             00190001
+002000    10 SHR-QTY              PIC S9(4) USAGE COMP.                 00200001
+002100    10 SHR-PQTY             PIC S9(4) USAGE COMP.                 00210001
+002200    10 SHR-ORD              PIC X(5).                             00220001
+002300    10 SHR-EXC              PIC X(3).                             00230001
+002400     EXEC SQL                                                     00240001
+002500       INCLUDE SHR1                                               00250000
+002600     END-EXEC.                                                    00260000
+002700     EXEC SQL                                                     00270000
+002800       INCLUDE SQLCA                                              00280000
+002900     END-EXEC.                                                    00290000
+003000     EXEC SQL                                                     00300000
+003100       DECLARE ENT_CUR CURSOR FOR                                 00310000
+003200       SELECT E_NO, SHR_ID, SHR_SYM,                              00320004
+003300       SHR_QTY, SHR_PQTY, SHR_ORD,                                00330004
+003400       SHR_EXEC FROM                                              00340003
+003500       SHR_TABLE                                                  00350008
+003600       WHERE E_NO = :WS-EID                                       00360001
+003700     END-EXEC.                                                    00370000
+003800  01  P-MESSAGE          PIC X(10)  VALUE SPACES.                 00380000
+003900  01  HEADING-LINE.                                               00390000
+004000     03  FILLER           PIC X(03) VALUE 'EID'.                  00400001
+004100     03  FILLER           PIC X(01) VALUE SPACES.                 00410001
+004200     03  FILLER           PIC X(03) VALUE 'SID'.                  00420001
+004300     03  FILLER           PIC X(01) VALUE SPACES.                 00430001
+004400     03  FILLER           PIC X(03) VALUE 'SYM'.                  00440001
+004500     03  FILLER           PIC X(01) VALUE SPACES.                 00450001
+004600     03  FILLER           PIC X(08) VALUE 'QUANTITY'.             00460001
+004700     03  FILLER           PIC X(01) VALUE SPACES.                 00470001
+004800     03  FILLER           PIC X(09) VALUE 'PQUANTITY'.            00480001
+004900     03  FILLER           PIC X(01) VALUE SPACES.                 00490001
+005000     03  FILLER           PIC X(05) VALUE 'ORDER'.                00500001
+005100     03  FILLER           PIC X(01) VALUE SPACES.                 00510001
+005200     03  FILLER           PIC X(08) VALUE 'EXCHANGE'.             00520001
+005300  01  DETAIL-LINE.                                                00530001
+005400   03 E-NO-O               PIC S9(4) USAGE COMP.                  00540010
+005500   03 SHR-ID-O             PIC S9(4) USAGE COMP.                  00550010
+005600   03 SHR-SYM-O            PIC X(5).                              00560010
+005700   03 SHR-QTY-O            PIC S9(4) USAGE COMP.                  00570010
+005800   03 SHR-PQTY-O           PIC S9(4) USAGE COMP.                  00580010
+005900   03 SHR-ORD-O            PIC X(5).                              00590010
+006000   03 SHR-EXC-O            PIC X(3).                              00600010
+006100  01  WS-REP-STAT         PIC X(02).                              00610001
+006200  01 WS-TABLE-FLAG        PIC X(01) VALUE 'N'.                    00620001
+006300    88 END-OF-ROW    VALUE 'Y'.                                   00630001
+006400  PROCEDURE DIVISION.                                             00640001
+006500   MAIN-PARA.                                                     00650001
+006600     OPEN OUTPUT REPORT-FILE                                      00660001
+006700     ACCEPT WS-EID                                                00670005
+006800       WRITE REPORT-RECORD FROM HEADING-LINE                      00680009
+006900       EXEC SQL                                                   00690001
+007000        OPEN ENT_CUR                                              00700001
+007100       END-EXEC                                                   00710001
+007200      PERFORM 1000-INIT-PARA UNTIL END-OF-ROW                     00720001
+007300      PERFORM 3000-END-PARA                                       00730001
+007400      STOP RUN.                                                   00740001
+007500   1000-INIT-PARA.                                                00750001
+007600     EXEC SQL                                                     00760001
+007700        FETCH ENT_CUR                                             00770001
+007800        INTO :E-NO                                                00780012
+007900             ,:SHR-ID                                             00790012
+008000             ,:SHR-SYM                                            00800012
+008100             ,:SHR-QTY                                            00810012
+008200             ,:SHR-PQTY                                           00820012
+008300             ,:SHR-ORD                                            00830012
+008400             ,:SHR-EXC                                            00840012
+008500     END-EXEC                                                     00850011
+008600      DISPLAY 'SELECT SQL = ', SQLCODE                            00860001
+008700      EVALUATE SQLCODE                                            00870001
+008800        WHEN ZERO                                                 00880001
+008900         PERFORM MOVE-PARA                                        00890001
+009000        WHEN 100                                                  00900001
+009100          MOVE 'Y' TO WS-TABLE-FLAG                               00910001
+009200          PERFORM 3000-END-PARA                                   00920001
+009300        WHEN -305                                                 00930001
+009400          MOVE 'NULL INDICATOR' TO P-MESSAGE                      00940001
+009500        WHEN OTHER                                                00950001
+009600          MOVE 'ERROR' TO P-MESSAGE                               00960001
+009700       END-EVALUATE.                                              00970001
+009800  MOVE-PARA.                                                      00980001
+009900       MOVE E-NO TO E-NO-O                                        00990001
+010000       MOVE SHR-ID TO SHR-ID-O                                    01000001
+010100       MOVE SHR-SYM   TO SHR-SYM-O                                01010001
+010200       MOVE SHR-QTY TO SHR-QTY-O                                  01020001
+010300       MOVE SHR-PQTY TO SHR-PQTY-O                                01030001
+010400       MOVE SHR-ORD TO SHR-ORD-O                                  01040001
+010500       MOVE SHR-EXC TO SHR-EXC-O                                  01050001
+010600       PERFORM 2000-WRITE-PARA.                                   01060001
+010700   2000-WRITE-PARA.                                               01070001
+010800       WRITE REPORT-RECORD FROM DETAIL-LINE.                      01080001
+010900   3000-END-PARA.                                                 01090001
+011000        EXEC SQL                                                  01100001
+011100        CLOSE ENT_CUR                                             01110001
+011200        END-EXEC                                                  01120001
+011300        CLOSE REPORT-FILE.                                        01130001

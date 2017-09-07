@@ -1,0 +1,368 @@
+000100 IDENTIFICATION DIVISION.                                         00010003
+000200 PROGRAM-ID. P17AP01.                                             00020005
+000300 DATA DIVISION.                                                   00030000
+000400 WORKING-STORAGE SECTION.                                         00040000
+000500 01  WS-RESP-CODE      PIC S9(08) COMP VALUE ZERO.                00050000
+000600 01  PARA-TABLE                        VALUE SPACES.              00060000
+000700     03  PARA-NAME     PIC X(16) OCCURS 12 TIMES.                 00070000
+000800 01  PARA-SUB          PIC 9(02) VALUE ZERO.                      00080000
+000900 01  WS-CA.                                                       00090000
+001000     03  WS-PROCESS-FLAG      PIC X(01) VALUE SPACES.             00100000
+001100         88  PROCESS-MAP1               VALUE '1'.                00110003
+001200         88  PROCESS-ADD                VALUE '2'.                00120000
+001300         88  PROCESS-UPD-DEL            VALUE '3'.                00130003
+001400         88  PROCESS-MAP2               VALUE '2', '3'.           00140003
+001500     03  WS-STU-RNO           PIC X(04) VALUE SPACES.             00150003
+001600* P17AS01 IS A BMS FILE                                           00160014
+001700     COPY P17AS01.                                                00170005
+001800     COPY DFHAID.                                                 00180005
+001900     COPY DFHBMSCA.                                               00190000
+002000* STUDENT IS A PS FILE WHICH CONTAINS THE DETAILS OF THE STUDENTS 00200014
+002100     COPY STUDENT.                                                00210006
+002200 01  WS-DATE                  PIC S9(15) COMP-3 VALUE ZERO.       00220000
+002300 01  WS-VALID-FLAG            PIC X(01) VALUE 'N'.                00230003
+002400     88  VALID-DATA                     VALUE 'Y'.                00240003
+002500 LINKAGE SECTION.                                                 00250000
+002600 01  DFHCOMMAREA  PIC X(06).                                      00260010
+002700 PROCEDURE DIVISION.                                              00270000
+002800 MAIN-PARA.                                                       00280000
+002900     ADD 1 TO PARA-SUB                                            00290000
+003000     IF PARA-SUB < 13                                             00300000
+003100        MOVE 'MAIN-PARA       ' TO PARA-NAME(PARA-SUB)            00310000
+003200     END-IF                                                       00320000
+003300     IF EIBCALEN = ZERO                                           00330000
+003400        PERFORM FIRST-PARA                                        00340000
+003500     ELSE                                                         00350000
+003600        MOVE DFHCOMMAREA TO WS-CA                                 00360000
+003700        PERFORM NEXT-PARA THRU NEXT-PARA-X                        00370000
+003800     END-IF.                                                      00380000
+003900 END-PARA.                                                        00390000
+004000     ADD 1 TO PARA-SUB                                            00400000
+004100     IF PARA-SUB < 13                                             00410000
+004200        MOVE 'END-PARA        ' TO PARA-NAME(PARA-SUB)            00420000
+004300     END-IF                                                       00430000
+004400     EXEC CICS RETURN                                             00440000
+004500          TRANSID('P17A')                                         00450007
+004600          COMMAREA(WS-CA)                                         00460000
+004700     END-EXEC.                                                    00470000
+004800 FIRST-PARA.                                                      00480000
+004900     ADD 1 TO PARA-SUB                                            00490000
+005000     IF PARA-SUB < 13                                             00500000
+005100        MOVE 'FIRST-PARA      ' TO PARA-NAME(PARA-SUB)            00510000
+005200     END-IF                                                       00520000
+005300     MOVE LOW-VALUES TO MAP1O                                     00530003
+005400     PERFORM SEND-FIRST-MAP.                                      00540000
+005500 SEND-FIRST-MAP.                                                  00550000
+005600     ADD 1 TO PARA-SUB                                            00560000
+005700     IF PARA-SUB < 13                                             00570000
+005800        MOVE 'SEND-FIRST-MAP  ' TO PARA-NAME(PARA-SUB)            00580000
+005900     END-IF                                                       00590000
+006000     PERFORM DATE-PARA                                            00600005
+006100     PERFORM SEND-MAP-1                                           00610005
+006200     SET PROCESS-MAP1 TO TRUE.                                    00620003
+006300 SEND-MAP-1.                                                      00630003
+006400     ADD 1 TO PARA-SUB                                            00640000
+006500     IF PARA-SUB < 13                                             00650000
+006600        MOVE 'SEND-MAP-1    ' TO PARA-NAME(PARA-SUB)              00660003
+006700     END-IF                                                       00670000
+006800     MOVE -1 TO RNO1L                                             00680003
+006900     EXEC CICS SEND                                               00690000
+007000         MAP('MAP1')                                              00700003
+007100         MAPSET('P17AS01')                                        00710005
+007200         FROM(MAP1O)                                              00720003
+007300         CURSOR                                                   00730000
+007400         ERASE                                                    00740000
+007500     END-EXEC.                                                    00750000
+007600* PERFORMING NEXT PARA TO PROCESS MAPS FROM MAPSET                00760014
+007700 NEXT-PARA.                                                       00770000
+007800     ADD 1 TO PARA-SUB                                            00780000
+007900     IF PARA-SUB < 13                                             00790000
+008000        MOVE 'NEXT-PARA       ' TO PARA-NAME(PARA-SUB)            00800000
+008100     END-IF                                                       00810000
+008200     EVALUATE TRUE                                                00820000
+008300        WHEN PROCESS-MAP1                                         00830003
+008400           PERFORM PROCESS-MAP1-PARA                              00840003
+008500        WHEN PROCESS-MAP2                                         00850003
+008600           PERFORM PROCESS-MAP2-PARA                              00860003
+008700     END-EVALUATE.                                                00870000
+008800* SEND MAPS FROM THE MAPSET                                       00880014
+008900 SEND-PARA.                                                       00890000
+009000     ADD 1 TO PARA-SUB                                            00900000
+009100     IF PARA-SUB < 13                                             00910000
+009200        MOVE 'SEND-PARA       ' TO PARA-NAME(PARA-SUB)            00920000
+009300     END-IF                                                       00930000
+009400     EVALUATE TRUE                                                00940000
+009500        WHEN PROCESS-MAP1                                         00950003
+009600           PERFORM SEND-MAP-1                                     00960003
+009700        WHEN PROCESS-MAP2                                         00970003
+009800           PERFORM SEND-MAP-2                                     00980003
+009900     END-EVALUATE.                                                00990000
+010000 NEXT-PARA-X.                                                     01000000
+010100     EXIT.                                                        01010000
+010200 PROCESS-MAP1-PARA.                                               01020003
+010300     ADD 1 TO PARA-SUB                                            01030000
+010400     IF PARA-SUB < 13                                             01040000
+010500        MOVE 'PROC MAP1 PARA' TO PARA-NAME(PARA-SUB)              01050003
+010600     END-IF                                                       01060000
+010700     EVALUATE EIBAID                                              01070003
+010800        WHEN DFHENTER                                             01080000
+010900           PERFORM RECEIVE-PROCESS-MAP1                           01090003
+011000        WHEN DFHPF3                                               01100000
+011100           EXEC CICS                                              01110008
+011200              RETURN                                              01120008
+011300           END-EXEC                                               01130000
+011400        WHEN OTHER                                                01140000
+011500           MOVE 'INVALID KEY PRESSED' TO MSG1O                    01150003
+011600     END-EVALUATE.                                                01160000
+011700* PROCESS THE RECEIVING FUNCTION FROM MAP1                        01170014
+011800 RECEIVE-PROCESS-MAP1.                                            01180003
+011900     ADD 1 TO PARA-SUB                                            01190000
+012000     IF PARA-SUB < 13                                             01200000
+012100        MOVE 'RCV PROC MAP1 ' TO PARA-NAME(PARA-SUB)              01210003
+012200     END-IF                                                       01220000
+012300     PERFORM RECEIVE-MAP-1                                        01230003
+012400     IF RNO1L = ZERO OR RNO1I = SPACES                            01240003
+012500        MOVE 'PLEASE ENTER A STUDENT NO' TO MSG1O                 01250010
+012600     ELSE                                                         01260000
+012700        PERFORM READ-STUDENT                                      01270003
+012800     END-IF.                                                      01280000
+012900* RECEIVING MAP1 FROM MAPSET                                      01290014
+013000 RECEIVE-MAP-1.                                                   01300003
+013100     ADD 1 TO PARA-SUB                                            01310000
+013200     IF PARA-SUB < 13                                             01320000
+013300        MOVE 'RECEIVE MAP1    ' TO PARA-NAME(PARA-SUB)            01330010
+013400     END-IF                                                       01340000
+013500     EXEC CICS RECEIVE                                            01350000
+013600         MAP('MAP1')                                              01360003
+013700         MAPSET('P17AS01')                                        01370008
+013800         INTO(MAP1I)                                              01380003
+013900     END-EXEC.                                                    01390000
+014000* READ THE DETAILS OF STUDENT FROM STUDENT FILE                   01400014
+014100 READ-STUDENT.                                                    01410003
+014200     ADD 1 TO PARA-SUB                                            01420000
+014300     IF PARA-SUB < 13                                             01430000
+014400        MOVE 'READ STUDENT   ' TO PARA-NAME(PARA-SUB)             01440003
+014500     END-IF                                                       01450000
+014600     MOVE LOW-VALUES TO MAP2O                                     01460003
+014700     MOVE RNO1I TO WS-STU-RNO, RNO2O                              01470003
+014800     EXEC CICS READ                                               01480000
+014900         FILE('P17DFILE')                                         01490007
+015000         RIDFLD(WS-STU-RNO)                                       01500005
+015100         INTO(MASTER-RECORD)                                      01510000
+015200         RESP(WS-RESP-CODE)                                       01520000
+015300     END-EXEC                                                     01530002
+015400     EVALUATE WS-RESP-CODE                                        01540000
+015500         WHEN DFHRESP(NORMAL)                                     01550000
+015600            MOVE STU-NAME  TO NAMEO                               01560003
+015700            MOVE STU-SID   TO SIDO                                01570003
+015800            MOVE STU-GRADE TO GRADEO                              01580003
+015900            MOVE STU-TMARKS   TO TMARKSO                          01590003
+016000            MOVE 'UPDATE / DELETE' TO MODEO                       01600003
+016100            MOVE -1                TO NAMEL                       01610000
+016200            SET PROCESS-UPD-DEL TO TRUE                           01620003
+016300            MOVE DFHBMDAR TO L1A                                  01630012
+016400            MOVE DFHBMPRO TO L2A                                  01640014
+016500         WHEN DFHRESP(NOTFND)                                     01650000
+016600            MOVE -1                TO NAMEL                       01660000
+016700            MOVE SPACES TO NAMEO, SIDO, GRADEO, TMARKSO           01670007
+016800            MOVE 'ADD STUDENT'   TO MODEO                         01680003
+016900            SET PROCESS-ADD TO TRUE                               01690000
+017000            MOVE DFHBMPRO TO L1A                                  01700012
+017100            MOVE DFHBMDAR TO L2A                                  01710012
+017200         WHEN OTHER                                               01720000
+017300            MOVE 'ERROR PROCESSING FILE' TO MSG1O                 01730000
+017400     END-EVALUATE.                                                01740000
+017500* MAP2 IS SENDING VALUES TO MAPSET                                01750014
+017600 SEND-MAP-2.                                                      01760003
+017700     ADD 1 TO PARA-SUB                                            01770000
+017800     IF PARA-SUB < 13                                             01780000
+017900        MOVE 'SEND-MAP-2 ' TO PARA-NAME(PARA-SUB)                 01790003
+018000     END-IF                                                       01800000
+018100     PERFORM DATE-PARA                                            01810007
+018200     EXEC CICS SEND                                               01820000
+018300         MAP('MAP2')                                              01830003
+018400         MAPSET('P17AS01')                                        01840005
+018500         FROM(MAP2O)                                              01850003
+018600         CURSOR                                                   01860000
+018700         ERASE                                                    01870000
+018800     END-EXEC.                                                    01880000
+018900* MAP2 IS PERFORMING UPDATE, ADD AND DELETE FUNCTIONS             01890014
+019000 PROCESS-MAP2-PARA.                                               01900003
+019100     ADD 1 TO PARA-SUB                                            01910000
+019200     IF PARA-SUB < 13                                             01920000
+019300        MOVE 'PROC MAP2 PARA' TO PARA-NAME(PARA-SUB)              01930003
+019400     END-IF                                                       01940000
+019500     EVALUATE EIBAID                                              01950003
+019600         WHEN DFHPF2                                              01960000
+019700            IF PROCESS-ADD                                        01970000
+019800               PERFORM ADD-PARA                                   01980000
+019900            ELSE                                                  01990000
+020000               IF PROCESS-UPD-DEL                                 02000008
+020100                 PERFORM UPDATE-PARA                              02010008
+020200            ELSE                                                  02020008
+020300               MOVE 'PF2 NOT ENABLED' TO MSG2O                    02030000
+020400            END-IF                                                02040000
+020500            END-IF                                                02050008
+020600         WHEN DFHPF3                                              02060000
+020700            SET PROCESS-MAP1 TO TRUE                              02070003
+020800         WHEN DFHPF4                                              02080000
+020900            IF PROCESS-UPD-DEL                                    02090003
+021000               PERFORM DELETE-PARA                                02100008
+021100            ELSE                                                  02110000
+021200               MOVE 'PF4 NOT ENABLED' TO MSG2O                    02120000
+021300            END-IF                                                02130000
+021400         WHEN OTHER                                               02140000
+021500            MOVE 'INVALID KEY PRESSED' TO MSG2O                   02150003
+021600     END-EVALUATE.                                                02160000
+021700* MAP2-RECEIVE DETAILS FROM P17AS01                               02170014
+021800 RECEIVE-MAP-2.                                                   02180003
+021900     ADD 1 TO PARA-SUB                                            02190000
+022000     IF PARA-SUB < 13                                             02200000
+022100        MOVE 'RCV DELAIL MAP  ' TO PARA-NAME(PARA-SUB)            02210003
+022200     END-IF                                                       02220000
+022300     EXEC CICS RECEIVE                                            02230000
+022400         MAP('MAP2')                                              02240003
+022500         MAPSET('P17AS01')                                        02250005
+022600         INTO(MAP2I)                                              02260003
+022700     END-EXEC.                                                    02270000
+022800* DELETE-PARA DELETE THE RECORD OF STUDENT FROM STUDENT FILE      02280014
+022900 DELETE-PARA.                                                     02290000
+023000     ADD 1 TO PARA-SUB                                            02300000
+023100     IF PARA-SUB < 13                                             02310000
+023200        MOVE 'DELETE-PARA     ' TO PARA-NAME(PARA-SUB)            02320000
+023300     END-IF                                                       02330000
+023400     EXEC CICS DELETE                                             02340000
+023500         FILE('P17DFILE')                                         02350011
+023600         RIDFLD(WS-STU-RNO)                                       02360005
+023700         RESP(WS-RESP-CODE)                                       02370000
+023800     END-EXEC                                                     02380000
+023900     EVALUATE WS-RESP-CODE                                        02390000
+024000         WHEN DFHRESP(NORMAL)                                     02400000
+024100            MOVE 'DELETE SUCCESSFUL' TO MSG1O                     02410000
+024200         WHEN OTHER                                               02420000
+024300            MOVE 'DELETE NOT SUCCESSFUL' TO MSG1O                 02430000
+024400     END-EVALUATE                                                 02440000
+024500     SET PROCESS-MAP1 TO TRUE                                     02450003
+024600     MOVE WS-STU-RNO TO RNO1O.                                    02460003
+024700* ADD-PARA INCLUDE THE NEW STUDENT DETAILS INTO THE STUDENT FILE  02470014
+024800 ADD-PARA.                                                        02480000
+024900     ADD 1 TO PARA-SUB                                            02490000
+025000     IF PARA-SUB < 13                                             02500000
+025100        MOVE 'ADD-PARA        ' TO PARA-NAME(PARA-SUB)            02510000
+025200     END-IF                                                       02520000
+025300     PERFORM RECEIVE-MAP-2                                        02530003
+025400     PERFORM VALIDATE-PARA                                        02540003
+025500     IF VALID-DATA                                                02550003
+025600        PERFORM MOVE-PARA                                         02560000
+025700        PERFORM WRITE-PARA                                        02570000
+025800     END-IF.                                                      02580000
+025900* WRITE-PARA WRITE THE RECORDS OF STUDENT IN OUTPUT FILE          02590014
+026000 WRITE-PARA.                                                      02600000
+026100     ADD 1 TO PARA-SUB                                            02610000
+026200     IF PARA-SUB < 13                                             02620000
+026300        MOVE 'WRITE-PARA      ' TO PARA-NAME(PARA-SUB)            02630000
+026400     END-IF                                                       02640000
+026500     EXEC CICS WRITE                                              02650000
+026600         FILE('P17DFILE')                                         02660011
+026700         RIDFLD(WS-STU-RNO)                                       02670005
+026800         FROM (MASTER-RECORD)                                     02680000
+026900         RESP(WS-RESP-CODE)                                       02690000
+027000     END-EXEC                                                     02700000
+027100     EVALUATE WS-RESP-CODE                                        02710000
+027200         WHEN DFHRESP(NORMAL)                                     02720000
+027300            MOVE 'ADD SUCCESSFUL' TO MSG1O                        02730000
+027400         WHEN OTHER                                               02740000
+027500            MOVE 'ADD NOT SUCCESSFUL' TO MSG1O                    02750000
+027600     END-EVALUATE                                                 02760000
+027700     SET PROCESS-MAP1 TO TRUE                                     02770003
+027800     MOVE WS-STU-RNO TO RNO1O.                                    02780003
+027900* UPDATE-PARA MODIFY OR UPDATE THE STUDENT RECORD                 02790014
+028000 UPDATE-PARA.                                                     02800000
+028100     ADD 1 TO PARA-SUB                                            02810000
+028200     IF PARA-SUB < 13                                             02820000
+028300        MOVE 'UPDATE-PARA     ' TO PARA-NAME(PARA-SUB)            02830000
+028400     END-IF                                                       02840000
+028500     PERFORM RECEIVE-MAP-2                                        02850003
+028600     PERFORM VALIDATE-PARA                                        02860003
+028700     IF VALID-DATA                                                02870003
+028800        PERFORM REWRITE-PARA                                      02880000
+028900     END-IF.                                                      02890000
+029000* REWRITE-PARA MODIFY THE EXISTING STUDENT RECORD                 02900014
+029100 REWRITE-PARA.                                                    02910000
+029200     ADD 1 TO PARA-SUB                                            02920000
+029300     IF PARA-SUB < 13                                             02930000
+029400        MOVE 'REWRITE-PARA    ' TO PARA-NAME(PARA-SUB)            02940000
+029500     END-IF                                                       02950000
+029600     EXEC CICS READ                                               02960000
+029700         FILE('P17DFILE')                                         02970011
+029800         RIDFLD(WS-STU-RNO)                                       02980005
+029900         INTO(MASTER-RECORD)                                      02990000
+030000         RESP(WS-RESP-CODE)                                       03000000
+030100         UPDATE                                                   03010000
+030200     END-EXEC                                                     03020000
+030300     EVALUATE WS-RESP-CODE                                        03030000
+030400         WHEN DFHRESP(NORMAL)                                     03040000
+030500            PERFORM MOVE-PARA                                     03050000
+030600            EXEC CICS REWRITE                                     03060000
+030700                FILE('P17DFILE')                                  03070011
+030800                FROM(MASTER-RECORD)                               03080000
+030900                RESP(WS-RESP-CODE)                                03090000
+031000            END-EXEC                                              03100000
+031100            EVALUATE WS-RESP-CODE                                 03110000
+031200              WHEN DFHRESP(NORMAL)                                03120000
+031300                 MOVE 'UPDATE SUCCESSFUL' TO MSG1O                03130000
+031400              WHEN OTHER                                          03140000
+031500                 MOVE 'UPDATE NOT SUCCESSFUL' TO MSG1O            03150000
+031600            END-EVALUATE                                          03160000
+031700         WHEN OTHER                                               03170000
+031800            MOVE 'ERROR PROCESSING FILE' TO MSG1O                 03180000
+031900     END-EVALUATE                                                 03190000
+032000     SET PROCESS-MAP1 TO TRUE                                     03200003
+032100     MOVE WS-STU-RNO TO RNO1O.                                    03210003
+032200* IN MOVE-PARA DETAILS MOVE FROM SYMBOLOIC MAP TO OUTPUT FILE     03220014
+032300 MOVE-PARA.                                                       03230000
+032400     ADD 1 TO PARA-SUB                                            03240000
+032500     IF PARA-SUB < 13                                             03250000
+032600        MOVE 'MOVE-PARA       ' TO PARA-NAME(PARA-SUB)            03260000
+032700     END-IF                                                       03270000
+032800     MOVE WS-STU-RNO            TO STU-RNO                        03280003
+032900     MOVE NAMEI                 TO STU-NAME                       03290003
+033000     MOVE SIDI                  TO STU-SID                        03300003
+033100     MOVE GRADEI                TO STU-GRADE                      03310003
+033200     MOVE TMARKSI               TO STU-TMARKS.                    03320007
+033300* DATE-PARA PERFORMING THE FORMATTING THE DATE                    03330014
+033400 DATE-PARA.                                                       03340000
+033500     ADD 1 TO PARA-SUB                                            03350000
+033600     IF PARA-SUB < 13                                             03360000
+033700        MOVE 'DATE-PARA  ' TO PARA-NAME(PARA-SUB)                 03370000
+033800     END-IF                                                       03380000
+033900     EXEC CICS ASKTIME                                            03390000
+034000         ABSTIME(WS-DATE)                                         03400000
+034100     END-EXEC                                                     03410000
+034200     EXEC CICS FORMATTIME                                         03420000
+034300         ABSTIME(WS-DATE)                                         03430000
+034400         DDMMYYYY(DATE1O)                                         03440000
+034500         DATESEP                                                  03450000
+034600     END-EXEC                                                     03460000
+034700     MOVE DATE1O TO DATE2O.                                       03470002
+034800* ALL THE VALIDATIONS ARE PERFORMED MY VALIDATION-PARA            03480014
+034900 VALIDATE-PARA.                                                   03490003
+035000     MOVE 'Y' TO WS-VALID-FLAG                                    03500014
+035100      IF NAMEL = ZERO OR                                          03510013
+035200         SIDL = ZERO OR                                           03520013
+035300         GRADEL = ZERO OR                                         03530013
+035400         TMARKSL = ZERO                                           03540013
+035500         MOVE LOW-VALUES TO MAP2O                                 03550013
+035600         MOVE WS-STU-RNO TO RNO1O                                 03560013
+035700      ELSE                                                        03570013
+035800         IF                                                       03580013
+035900           NAMEI = SPACES OR                                      03590013
+036000           SIDI = SPACES OR                                       03600013
+036100           GRADEI = SPACES OR                                     03610013
+036200           TMARKSI = SPACES                                       03620013
+036300           MOVE LOW-VALUES TO MAP2O                               03630013
+036400           MOVE WS-STU-RNO TO RNO1O                               03640013
+036500           MOVE 'N' TO WS-VALID-FLAG                              03650013
+036600           MOVE 'PLEASE ENTER A VALID ENTRY' TO MSG2O             03660013
+036700         END-IF                                                   03670013
+036800      END-IF.                                                     03680013

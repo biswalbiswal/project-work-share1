@@ -1,0 +1,159 @@
+000100 IDENTIFICATION DIVISION.                                         00010000
+000200 PROGRAM-ID. P16AP05.                                             00020000
+000300 DATA DIVISION.                                                   00030000
+000400 WORKING-STORAGE SECTION.                                         00040000
+000500 01  WS-RESP-CODE     PIC S9(08) COMP VALUE ZERO.                 00050000
+000600 01  WS-CA.                                                       00060000
+000700     03 WS-PROCESS-FLAG      PIC X(01) VALUE SPACES.              00070000
+000800        88  PROCESS-USERMAP      VALUE '1'.                       00080000
+000900        88  PROCESS-ADD         VALUE '2'.                        00090000
+001000     03  WS-XCTL.                                                 00100000
+001100        05  WS-USER-ID           PIC S9(04) USAGE COMP.           00110000
+001200        05  TEMP   PIC 9(01) VALUE ZERO.                          00120000
+001300 01  WS-ID            PIC X(04) VALUE SPACES.                     00130000
+001400 01  WS-DATEIN        PIC X(10) VALUE SPACES.                     00140000
+001500 01  WS-TIMEIN        PIC X(08) VALUE SPACES.                     00150000
+001600 01  WS-DATE-TIME     PIC S9(15) COMP-3 VALUE ZERO.               00160000
+001700 01  WS-VALID-FLAG    PIC X(01) VALUE 'N'.                        00170000
+001800     88 VALID-DATA              VALUE 'Y'.                        00180000
+001900 01  WS-DOB.                                                      00190000
+002000         05 WS-DATE-DD        PIC 9(02) VALUE ZERO.               00200000
+002100         05 FILLER         PIC X(01) VALUE '/'.                   00210000
+002200         05 WS-DATE-MMM       PIC X(03) VALUE ZERO.               00220000
+002300         05 FILLER         PIC X(01) VALUE '/'.                   00230000
+002400         05 WS-DATE-YYYY      PIC 9(04) VALUE ZERO.               00240000
+002500 01  WS-DATE.                                                     00250000
+002600         05 WS-DOB-YYYY      PIC 9(04) VALUE ZERO.                00260000
+002700         05 WS-DOB-MM        PIC 9(02) VALUE ZERO.                00270000
+002800         05 WS-DOB-DD        PIC 9(02) VALUE ZERO.                00280000
+002900 01  WS-MESSAGE  PIC X(30) VALUE                                  00290000
+003000     'END OF THE PROGRAM, BYE, BYE!!'.                            00300000
+003100 COPY DFHBMSCA.                                                   00310000
+003200 COPY P16AS05.                                                    00320000
+003300 COPY DFHAID.                                                     00330000
+003400     EXEC SQL                                                     00340000
+003500       INCLUDE USER11                                             00350000
+003600     END-EXEC.                                                    00360000
+003700     EXEC SQL                                                     00370000
+003800       INCLUDE SQLCA                                              00380000
+003900     END-EXEC.                                                    00390000
+004000 LINKAGE SECTION.                                                 00400000
+004100 01  DFHCOMMAREA     PIC X(06).                                   00410000
+004200 PROCEDURE DIVISION.                                              00420000
+004300 MAIN-PARA.                                                       00430000
+004400     IF EIBCALEN = ZERO                                           00440000
+004500         PERFORM FIRST-PARA                                       00450000
+004600     ELSE                                                         00460000
+004700         MOVE DFHCOMMAREA TO WS-CA                                00470000
+004800         PERFORM NEXT-PARA                                        00480000
+004900     END-IF.                                                      00490000
+005000 END-PARA.                                                        00500000
+005100     EXEC CICS RETURN                                             00510000
+005200         TRANSID('P16E')                                          00520000
+005300         COMMAREA(WS-CA)                                          00530000
+005400     END-EXEC.                                                    00540000
+005500 FIRST-PARA.                                                      00550000
+005600     MOVE LOW-VALUES TO USERMAPO                                  00560000
+005700     PERFORM SEND-MAP-FIRST.                                      00570000
+005800 SEND-MAP-FIRST.                                                  00580000
+005900     PERFORM DATE-TIME-PARA                                       00590000
+006000     MOVE -1 TO UIDL                                              00600000
+006100     EXEC CICS SEND                                               00610000
+006200         MAP('USERMAP')                                           00620000
+006300         MAPSET('P16AS05')                                        00630000
+006400         FROM (USERMAPO)                                          00640000
+006500         CURSOR                                                   00650000
+006600         ERASE                                                    00660000
+006700     END-EXEC                                                     00670000
+006800     SET PROCESS-USERMAP TO TRUE.                                 00680000
+006900 NEXT-PARA.                                                       00690000
+007000     EVALUATE TRUE                                                00700000
+007100       WHEN PROCESS-USERMAP                                       00710000
+007200          PERFORM PROCESS-USER-MAP                                00720000
+007300     END-EVALUATE                                                 00730000
+007400     PERFORM SEND-MAP-FIRST.                                      00740000
+007500 PROCESS-USER-MAP.                                                00750000
+007600     EVALUATE EIBAID                                              00760000
+007700       WHEN DFHENTER                                              00770000
+007800         PERFORM RECEIVE-FIRST-MAP                                00780000
+007900         PERFORM PROCESS-USER-PARA                                00790000
+008000         MOVE 1 TO TEMP                                           00800000
+008100       WHEN DFHPF3                                                00810000
+008200         EXEC CICS XCTL                                           00820000
+008300             PROGRAM('P16AP09')                                   00830000
+008400         END-EXEC                                                 00840000
+008500       WHEN OTHER                                                 00850000
+008600         MOVE 'INVALID KEY IS PRESSED' TO MSG5O                   00860000
+008700     END-EVALUATE.                                                00870000
+008800 PROCESS-USER-PARA.                                               00880000
+008900     IF UIDL = ZERO OR UIDI = SPACES                              00890000
+009000        MOVE 'PLEASE ENTER AN USERID..' TO MSG5O                  00900000
+009100     ELSE                                                         00910000
+009200              PERFORM READ-EMPLOYEE                               00920000
+009300     END-IF.                                                      00930000
+009400 READ-EMPLOYEE.                                                   00940000
+009500     MOVE UIDI TO WS-USER-ID                                      00950000
+009600     EXEC SQL                                                     00960000
+009700         SELECT E_ID , E_NAME , E_MAIL ,                          00970000
+009800                E_CNO , E_DOB , E_ADD , E_IFSC , E_ACCNO          00980000
+009900         INTO :E-ID , :E-NAME , :E-MAIL ,                         00990000
+010000                     :E-CNO , :E-DOB , :E-ADD ,                   01000000
+010100                     :E-IFSC , :E-ACCNO                           01010000
+010200         FROM ENTITY_TABLE1                                       01020000
+010300         WHERE E_ID = :WS-USER-ID                                 01030000
+010400     END-EXEC                                                     01040000
+010500     EVALUATE SQLCODE                                             01050000
+010600       WHEN 0                                                     01060000
+010700           MOVE 'USER ALREADY EXISTS' TO MSG5O                    01070000
+010800           SET PROCESS-USERMAP TO TRUE                            01080000
+010900       WHEN 100                                                   01090000
+011000           PERFORM MOVE-PARA                                      01100000
+011100           EXEC SQL                                               01110000
+011200              INSERT INTO ENTITY_TABLE1                           01120000
+011300              VALUES(:E-ID , :E-NAME , :E-MAIL ,                  01130000
+011400                     :E-CNO , :E-DOB , :E-ADD ,                   01140000
+011500                     :E-IFSC , :E-ACCNO)                          01150000
+011600           END-EXEC                                               01160000
+011700           EVALUATE SQLCODE                                       01170000
+011800                 WHEN ZERO                                        01180000
+011900                   MOVE 1 TO TEMP                                 01190000
+012000                   EXEC CICS XCTL                                 01200000
+012100                     PROGRAM('P16AP06')                           01210000
+012200                   END-EXEC                                       01220000
+012300**                   COMMAREA(WS-XCTL)                            01230000
+012400                 WHEN OTHER                                       01240000
+012500                      MOVE 'USER NOT CREATED' TO MSG5O            01250000
+012600           END-EVALUATE                                           01260000
+012700     END-EVALUATE.                                                01270000
+012800 RECEIVE-FIRST-MAP.                                               01280000
+012900     EXEC CICS RECEIVE                                            01290000
+013000         MAP('USERMAP')                                           01300000
+013100         MAPSET('P16AS05')                                        01310000
+013200         INTO(USERMAPI)                                           01320000
+013300     END-EXEC.                                                    01330000
+013400 MOVE-PARA.                                                       01340000
+013500             MOVE UIDI        TO WS-USER-ID                       01350000
+013600             MOVE UIDI        TO E-ID                             01360000
+013700             MOVE UNAMEI      TO E-NAME                           01370000
+013800             MOVE EMAILI      TO E-MAIL                           01380000
+013900             MOVE CONT5I      TO E-CNO                            01390000
+014000             MOVE DOBDDI      TO E-DOB(9:2)                       01400000
+014100             MOVE '-'         TO E-DOB(8:1), E-DOB(5:1)           01410000
+014200             MOVE DOBMMI      TO E-DOB(6:2)                       01420000
+014300             MOVE DOBYYI      TO E-DOB(1:4)                       01430000
+014400             MOVE ADDRI       TO E-ADD                            01440000
+014500             MOVE IFSCI       TO E-IFSC                           01450000
+014600             MOVE ACCNTI      TO E-ACCNO.                         01460000
+014700 DATE-TIME-PARA.                                                  01470000
+014800     EXEC CICS ASKTIME                                            01480000
+014900          ABSTIME(WS-DATE-TIME)                                   01490000
+015000     END-EXEC                                                     01500000
+015100     EXEC CICS FORMATTIME                                         01510000
+015200          ABSTIME(WS-DATE-TIME)                                   01520000
+015300          DDMMYYYY(WS-DATEIN)                                     01530000
+015400          DATESEP('-')                                            01540000
+015500          TIME(WS-TIMEIN)                                         01550000
+015600          TIMESEP                                                 01560000
+015700     END-EXEC                                                     01570000
+015800     MOVE WS-DATEIN TO DATE5O                                     01580000
+015900     MOVE WS-TIMEIN TO TIME5O.                                    01590000

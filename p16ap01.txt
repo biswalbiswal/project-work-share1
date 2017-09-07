@@ -1,0 +1,145 @@
+000100 IDENTIFICATION DIVISION.                                         00010000
+000200 PROGRAM-ID. P16AP01.                                             00020000
+000300 DATA DIVISION.                                                   00030000
+000400 WORKING-STORAGE SECTION.                                         00040000
+000500 01  WS-RESP-CODE     PIC S9(08) COMP VALUE ZERO.                 00050000
+000600 01  WS-CA.                                                       00060000
+000700     03 WS-PROCESS-FLAG      PIC X(01) VALUE SPACES.              00070000
+000800        88  PROCESS-KEYMAP      VALUE '1'.                        00080000
+000900     03  WS-UNAME           PIC S9(3)V USAGE COMP-3.              00090000
+001000     03  WS-PASS            PIC X(08) VALUE SPACES.               00100000
+001100 01  WS-DATEIN        PIC X(10) VALUE SPACES.                     00110000
+001200 01  WS-TIMEIN        PIC X(08) VALUE SPACES.                     00120000
+001300 01  WS-DATE-TIME     PIC S9(15) COMP-3 VALUE ZERO.               00130000
+001400 01  WS-DATE.                                                     00140000
+001500         05 WS-DOB-YYYY      PIC 9(04) VALUE ZERO.                00150000
+001600         05 WS-DOB-MM        PIC 9(02) VALUE ZERO.                00160000
+001700         05 WS-DOB-DD        PIC 9(02) VALUE ZERO.                00170000
+001800 01  WS-MESSAGE  PIC X(30) VALUE                                  00180000
+001900     'THANK YOU, FOR VISITING US!!'.                              00190000
+002000 COPY DFHBMSCA.                                                   00200000
+002100 COPY P16AS10.                                                    00210000
+002200 COPY DFHAID.                                                     00220000
+002300     EXEC SQL                                                     00230000
+002400      INCLUDE BROK1                                               00240000
+002500     END-EXEC.                                                    00250000
+002600     EXEC SQL                                                     00260000
+002700      INCLUDE SQLCA                                               00270000
+002800     END-EXEC.                                                    00280000
+002900 LINKAGE SECTION.                                                 00290000
+003000 01  DFHCOMMAREA     PIC X(06).                                   00300000
+003100 PROCEDURE DIVISION.                                              00310000
+003200 MAIN-PARA.                                                       00320000
+003300     IF EIBCALEN = ZERO                                           00330000
+003400         PERFORM FIRST-PARA                                       00340000
+003500     ELSE                                                         00350000
+003600         MOVE DFHCOMMAREA TO WS-CA                                00360000
+003700         PERFORM NEXT-PARA THRU NEXT-PARA-EXIT                    00370000
+003800     END-IF.                                                      00380000
+003900 END-PARA.                                                        00390000
+004000     EXEC CICS RETURN                                             00400000
+004100         TRANSID('P16A')                                          00410000
+004200         COMMAREA(WS-CA)                                          00420000
+004300     END-EXEC.                                                    00430000
+004400 FIRST-PARA.                                                      00440000
+004500     MOVE LOW-VALUES TO USRMAP1O                                  00450000
+004600     PERFORM SEND-MAP-FIRST.                                      00460000
+004700 SEND-MAP-FIRST.                                                  00470000
+004800     PERFORM DATE-TIME-PARA                                       00480000
+004900     MOVE -1 TO UNAMEL                                            00490000
+005000     EXEC CICS SEND                                               00500000
+005100         MAP('USRMAP1')                                           00510000
+005200         MAPSET('P16AS10')                                        00520000
+005300         FROM (USRMAP1O)                                          00530000
+005400         CURSOR                                                   00540000
+005500         ERASE                                                    00550000
+005600     END-EXEC                                                     00560000
+005700     SET PROCESS-KEYMAP TO TRUE.                                  00570000
+005800 NEXT-PARA.                                                       00580000
+005900     EVALUATE TRUE                                                00590000
+006000       WHEN PROCESS-KEYMAP                                        00600000
+006100          PERFORM PROCESS-KEY-MAP                                 00610000
+006200     END-EVALUATE.                                                00620000
+006300 SEND-PARA.                                                       00630000
+006400     EVALUATE TRUE                                                00640000
+006500       WHEN PROCESS-KEYMAP                                        00650000
+006600          PERFORM SEND-MAP-FIRST                                  00660000
+006700     END-EVALUATE.                                                00670000
+006800 NEXT-PARA-EXIT.                                                  00680000
+006900     EXIT.                                                        00690000
+007000 PROCESS-KEY-MAP.                                                 00700000
+007100     EVALUATE EIBAID                                              00710000
+007200       WHEN DFHENTER                                              00720000
+007300         PERFORM RECEIVE-FIRST-MAP                                00730000
+007400         PERFORM VALIDATE-PARA                                    00740000
+007500         PERFORM PROCESS-KEY-PARA                                 00750000
+007600       WHEN DFHENTER                                              00760000
+007700         EXEC CICS XCTL                                           00770000
+007800            PROGRAM('P04AP09')                                    00780000
+007900         END-EXEC                                                 00790000
+008000       WHEN DFHPF2                                                00800000
+008100         EXEC CICS XCTL                                           00810000
+008200            PROGRAM('P16AP02')                                    00820000
+008300         END-EXEC                                                 00830000
+008400       WHEN DFHPF3                                                00840000
+008500         EXEC CICS SEND TEXT                                      00850000
+008600             FROM(WS-MESSAGE)                                     00860000
+008700             ERASE                                                00870000
+008800         END-EXEC                                                 00880000
+008900       WHEN OTHER                                                 00890000
+009000         MOVE 'INVALID KEY IS PRESSED' TO MESSAGE1O               00900000
+009100     END-EVALUATE.                                                00910000
+009200 PROCESS-KEY-PARA.                                                00920000
+009300     IF UNAMEL = ZERO OR UNAMEI = SPACES                          00930000
+009400        MOVE 'PLEASE ENTER USERNAME ' TO MESSAGE1O                00940000
+009500     END-IF                                                       00950000
+009600     IF PASSL = ZERO OR PASSI = SPACES                            00960000
+009700        MOVE 'PLEASE ENTER PASSWORD ' TO MESSAGE1O                00970000
+009800        SET PROCESS-KEYMAP TO TRUE                                00980000
+009900     ELSE                                                         00990000
+010000              PERFORM READ-BROKER                                 01000000
+010100     END-IF.                                                      01010000
+010200 READ-BROKER.                                                     01020000
+010300     MOVE UNAMEI TO WS-UNAME                                      01030000
+010400     MOVE PASSI TO WS-PASS                                        01040000
+010500     EXEC SQL                                                     01050000
+010600          SELECT B_ID, B_PASS INTO :B-ID , :B-PASS                01060000
+010700          FROM BROKER_TABLE                                       01070000
+010800          WHERE B_ID = :WS-UNAME AND B_PASS = :WS-PASS            01080000
+010900     END-EXEC.                                                    01090000
+011000     EVALUATE SQLCODE                                             01100000
+011100     WHEN 100                                                     01110000
+011200          MOVE 'SOMETHING WENT WRONG' TO MESSAGE1O                01120000
+011300     WHEN ZERO                                                    01130000
+011400          MOVE 'LOGIN SUCCESSFUL' TO MESSAGE1O                    01140000
+011500     END-EVALUATE.                                                01150000
+011600 RECEIVE-FIRST-MAP.                                               01160000
+011700     EXEC CICS RECEIVE                                            01170000
+011800         MAP('USRMAP1')                                           01180000
+011900         MAPSET('P16AS10')                                        01190000
+012000         INTO(USRMAP1I)                                           01200000
+012100     END-EXEC.                                                    01210000
+012200 DATE-TIME-PARA.                                                  01220000
+012300     EXEC CICS ASKTIME                                            01230000
+012400          ABSTIME(WS-DATE-TIME)                                   01240000
+012500     END-EXEC                                                     01250000
+012600     EXEC CICS FORMATTIME                                         01260000
+012700          ABSTIME(WS-DATE-TIME)                                   01270000
+012800          DDMMYYYY(WS-DATEIN)                                     01280000
+012900          DATESEP('-')                                            01290000
+013000          TIME(WS-TIMEIN)                                         01300000
+013100          TIMESEP                                                 01310000
+013200     END-EXEC                                                     01320000
+013300     MOVE WS-DATEIN TO DATE01O                                    01330000
+013400     MOVE WS-TIMEIN TO TIME01O.                                   01340000
+013500 VALIDATE-PARA.                                                   01350000
+013600      IF UNAMEL = ZERO         OR                                 01360000
+013700         UNAMEL IS LESS THAN 3 OR                                 01370000
+013800         UNAMEI IS NOT NUMERIC OR                                 01380000
+013900         UNAMEI = SPACES                                          01390000
+014000      MOVE LOW-VALUES TO USRMAP1O                                 01400000
+014100      MOVE -1 TO UNAMEI                                           01410000
+014200      MOVE 'USERNAME MUST BE NUMERIC & MAX LENGTH 3' TO MESSAGE1O 01420000
+014300      ELSE                                                        01430000
+014400            PERFORM PROCESS-KEY-PARA                              01440000
+014500      END-IF.                                                     01450000

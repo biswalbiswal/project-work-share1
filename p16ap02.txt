@@ -1,0 +1,250 @@
+000100 IDENTIFICATION DIVISION.                                         00010000
+000200 PROGRAM-ID. P16AP02.                                             00020000
+000300 DATA DIVISION.                                                   00030000
+000400 WORKING-STORAGE SECTION.                                         00040000
+000500 01  WS-CA.                                                       00050000
+000600     03 WS-PROCESS-FLAG      PIC X(01) VALUE SPACES.              00060000
+000700        88  PROCESS-USERMAP      VALUE '1'.                       00070000
+000800        88  PROCESS-ADD         VALUE '2'.                        00080000
+000900*    03  WS-USER-ID           PIC X(05) VALUE SPACES.             00090000
+001000     03  WS-UNAME           PIC S9(3)V USAGE COMP-3.              00100000
+001100     03  WS-PASS            PIC X(08) VALUE SPACES.               00110000
+001200*01  WS-SPL-CHARS     PIC X(01) VALUE SPACES.                     00120000
+001300*     88 SPL-CHARS   VALUES ARE                                   00130000
+001400*        ',', ' ', '!', '#', '%', '$', '^', '&', '*',             00140000
+001500*        '(', ')', '+', '{', '}', '[', ']', '/', '\'.             00150000
+001600 01  WS-DATEIN        PIC X(10) VALUE SPACES.                     00160000
+001700 01  WS-TIMEIN        PIC X(08) VALUE SPACES.                     00170000
+001800 01  WS-DATE-TIME     PIC S9(15) COMP-3 VALUE ZERO.               00180000
+001900 01  WS-VALID-FLAG    PIC X(01) VALUE 'N'.                        00190000
+002000     88 VALID-DATA              VALUE 'Y'.                        00200000
+002100 01  WS-DOB.                                                      00210000
+002200         05 WS-DATE-YYYY      PIC 9(04) VALUE ZERO.               00220000
+002300         05 FILLER         PIC X(01) VALUE '-'.                   00230000
+002400         05 WS-DATE-MM       PIC 9(02) VALUE ZERO.                00240000
+002500         05 FILLER         PIC X(01) VALUE '-'.                   00250000
+002600         05 WS-DATE-DD        PIC 9(02) VALUE ZERO.               00260000
+002700 01  WS-DATE.                                                     00270000
+002800         05 WS-DOB-YYYY      PIC 9(04) VALUE ZERO.                00280000
+002900         05 WS-DOB-MM        PIC 9(02) VALUE ZERO.                00290000
+003000         05 WS-DOB-DD        PIC 9(02) VALUE ZERO.                00300000
+003100 01  WS-MESSAGE  PIC X(30) VALUE                                  00310000
+003200     'END OF THE PROGRAM, BYE, BYE!!'.                            00320000
+003300 COPY DFHBMSCA.                                                   00330000
+003400 COPY P16AS06.                                                    00340000
+003500 COPY DFHAID.                                                     00350000
+003600     EXEC SQL                                                     00360000
+003700       INCLUDE BROK1                                              00370000
+003800     END-EXEC.                                                    00380000
+003900     EXEC SQL                                                     00390000
+004000       INCLUDE SQLCA                                              00400000
+004100     END-EXEC.                                                    00410000
+004200 LINKAGE SECTION.                                                 00420000
+004300 01  DFHCOMMAREA     PIC X(06).                                   00430000
+004400 PROCEDURE DIVISION.                                              00440000
+004500 MAIN-PARA.                                                       00450000
+004600     IF EIBCALEN = ZERO                                           00460000
+004700         PERFORM FIRST-PARA                                       00470000
+004800     ELSE                                                         00480000
+004900         MOVE DFHCOMMAREA TO WS-CA                                00490000
+005000         PERFORM NEXT-PARA                                        00500000
+005100     END-IF.                                                      00510000
+005200 END-PARA.                                                        00520000
+005300     EXEC CICS RETURN                                             00530000
+005400         TRANSID('P16B')                                          00540000
+005500         COMMAREA(WS-CA)                                          00550000
+005600     END-EXEC.                                                    00560000
+005700 FIRST-PARA.                                                      00570000
+005800     MOVE LOW-VALUES TO BCRTMAPO                                  00580000
+005900     PERFORM SEND-MAP-FIRST.                                      00590000
+006000 SEND-MAP-FIRST.                                                  00600000
+006100     PERFORM DATE-TIME-PARA                                       00610000
+006200     MOVE -1 TO BIDL                                              00620000
+006300     EXEC CICS SEND                                               00630000
+006400         MAP('BCRTMAP')                                           00640000
+006500         MAPSET('P16AS06')                                        00650000
+006600         FROM (BCRTMAPO)                                          00660000
+006700         CURSOR                                                   00670000
+006800         ERASE                                                    00680000
+006900     END-EXEC                                                     00690000
+007000     SET PROCESS-USERMAP TO TRUE.                                 00700000
+007100 NEXT-PARA.                                                       00710000
+007200     EVALUATE TRUE                                                00720000
+007300       WHEN PROCESS-USERMAP                                       00730000
+007400          PERFORM PROCESS-USER-MAP                                00740000
+007500     END-EVALUATE                                                 00750000
+007600     PERFORM SEND-MAP-FIRST.                                      00760000
+007700 PROCESS-USER-MAP.                                                00770000
+007800     EVALUATE EIBAID                                              00780000
+007900       WHEN DFHENTER                                              00790000
+008000         PERFORM RECEIVE-FIRST-MAP                                00800000
+008100*        PERFORM VALIDATE-PARA                                    00810000
+008200         PERFORM PROCESS-USER-PARA                                00820000
+008300*        EXEC CICS XCTL                                           00830000
+008400*            PROGRAM('P04AP08')                                   00840000
+008500*        END-EXEC                                                 00850000
+008600       WHEN DFHPF3                                                00860000
+008700         EXEC CICS XCTL                                           00870000
+008800             PROGRAM('P04AP09')                                   00880000
+008900         END-EXEC                                                 00890000
+009000       WHEN OTHER                                                 00900000
+009100         MOVE 'INVALID KEY IS PRESSED' TO MSG3O                   00910000
+009200     END-EVALUATE.                                                00920000
+009300 PROCESS-USER-PARA.                                               00930000
+009400     IF BIDL = ZERO OR BIDI = SPACES                              00940000
+009500        MOVE 'PLEASE ENTER AN BROKERID' TO MSG3O                  00950000
+009600*       SET PROCESS-USERMAP TO TRUE                               00960000
+009700     ELSE                                                         00970000
+009800              PERFORM READ-EMPLOYEE                               00980000
+009900     END-IF.                                                      00990000
+010000 READ-EMPLOYEE.                                                   01000000
+010100     MOVE BIDI TO WS-UNAME                                        01010000
+010200     MOVE BPASSI TO WS-PASS                                       01020000
+010300     EXEC SQL                                                     01030000
+010400          SELECT B_ID, B_PASS INTO :B-ID , :B-PASS                01040000
+010500          FROM BROKER_TABLE                                       01050000
+010600          WHERE B_ID = :WS-UNAME AND B_PASS = :WS-PASS            01060000
+010700     END-EXEC                                                     01070000
+010800     EVALUATE SQLCODE                                             01080000
+010900     WHEN ZERO                                                    01090000
+011000          MOVE 'USER ALREADY EXIST' TO MSG3O                      01100000
+011100     WHEN 100                                                     01110000
+011200     PERFORM MOVE-PARA                                            01120000
+011300     END-EVALUATE                                                 01130000
+011400     EXEC SQL                                                     01140000
+011500          INSERT INTO BROKER_TABLE                                01150000
+011600          VALUES(:B-ID , :B-PASS , :B-NAME ,                      01160000
+011700           :B-MAIL , :B-CNO , :B-ADD ,                            01170000
+011800           :B-DOB , :B-EARN , :B-DEDN)                            01180000
+011900     END-EXEC                                                     01190000
+012000     EVALUATE SQLCODE                                             01200000
+012100     WHEN ZERO                                                    01210000
+012200          MOVE 'ACCOUNT CREATED SUCCESSFULLY' TO MSG3O            01220000
+012300     WHEN OTHER                                                   01230000
+012400          MOVE 'ACCOUNT NOT CREATED' TO MSG3O                     01240000
+012500     END-EVALUATE.                                                01250000
+012600 RECEIVE-FIRST-MAP.                                               01260000
+012700     EXEC CICS RECEIVE                                            01270000
+012800         MAP('BCRTMAP')                                           01280000
+012900         MAPSET('P16AS06')                                        01290000
+013000         INTO(BCRTMAPI)                                           01300000
+013100     END-EXEC.                                                    01310000
+013200 MOVE-PARA.                                                       01320000
+013300             MOVE BIDI      TO  B-ID                              01330000
+013400             MOVE BPASSI    TO  B-PASS                            01340000
+013500             MOVE NAMEI     TO  B-NAME                            01350000
+013600             MOVE EMAILI    TO  B-MAIL                            01360000
+013700             MOVE CONTI     TO  B-CNO                             01370000
+013800             MOVE ADDI      TO  B-ADD                             01380000
+013900*           PERFORM MOVE-DOB-PARA                                 01390000
+014000             MOVE DOBDDI      TO B-DOB(9:2)                       01400000
+014100             MOVE '-'         TO B-DOB(8:1), B-DOB(5:1)           01410000
+014200             MOVE DOBMMI      TO B-DOB(6:2)                       01420000
+014300             MOVE DOBYYI      TO B-DOB(1:4)                       01430000
+014400*            MOVE DOBDDI    TO  B-DOB                             01440000
+014500             MOVE EARNI     TO  B-EARN                            01450000
+014600             MOVE DEDNI     TO  B-DEDN.                           01460000
+014700*MOVE-DOB-PARA.                                                   01470000
+014800*            MOVE DOBDDI TO WS-DOB                                01480000
+014900*            MOVE WS-DOB TO B-DOB.                                01490000
+015000 DATE-TIME-PARA.                                                  01500000
+015100     EXEC CICS ASKTIME                                            01510000
+015200          ABSTIME(WS-DATE-TIME)                                   01520000
+015300     END-EXEC                                                     01530000
+015400     EXEC CICS FORMATTIME                                         01540000
+015500          ABSTIME(WS-DATE-TIME)                                   01550000
+015600          DDMMYYYY(WS-DATEIN)                                     01560000
+015700          DATESEP('-')                                            01570000
+015800          TIME(WS-TIMEIN)                                         01580000
+015900          TIMESEP                                                 01590000
+016000     END-EXEC                                                     01600000
+016100     MOVE WS-DATEIN TO DATE3O                                     01610000
+016200     MOVE WS-TIMEIN TO TIME3O.                                    01620000
+016300*VALIDATE-PARA.                                                   01630000
+016400*     IF BIDI IS NOT NUMERIC     OR                               01640000
+016500*        BIDI = SPACES           OR                               01650000
+016600*        BIDL IS     LESS THAN 3 OR                               01660000
+016700*        SPL-CHARS   OR                                           01670000
+016800*        BIDI = ZERO                                              01680000
+016900*        MOVE LOW-VALUES TO BCRTMAPO                              01690000
+017000*        MOVE -1 TO BIDL                                          01700000
+017100*        MOVE 'BID SHOULD BE NUMERIC AND MAX LENGTH OF 3' TO MSG3O01710000
+017200*     ELSE                                                        01720000
+017300*     IF BPASSI IS NUMERIC         OR                             01730000
+017400*        BPASSI = SPACES           OR                             01740000
+017500*        BPASSL IS     LESS THAN 8 OR                             01750000
+017600*        BPASSI = ZERO             OR                             01760000
+017700*        BPASSI IS ALPHABETIC        OR                           01770000
+017800*        SPL-CHARS                                                01780000
+017900*        MOVE LOW-VALUES TO BCRTMAPO                              01790000
+018000*        MOVE -1 TO BPASSL                                        01800000
+018100*       MOVE 'BNAME SHOULD BE ALPHANUMERIC & OF LENGTH 8' TO MSG3O01810000
+018200*     ELSE                                                        01820000
+018300*     IF NAMEI IS NUMERIC         OR                              01830000
+018400*        NAMEI = SPACES           OR                              01840000
+018500*        NAMEL IS NOT LESS THAN 8 OR                              01850000
+018600*        NAMEI = ZERO             OR                              01860000
+018700*        SPL-CHARS                                                01870000
+018800*        MOVE LOW-VALUES TO BCRTMAPO                              01880000
+018900*        MOVE -1 TO NAMEL                                         01890000
+019000*        MOVE 'NAME SHOULD BE ALPHABETIC & OF LENGTH 8' TO MSG3O  01900000
+019100*     ELSE                                                        01910000
+019200*     IF CONTI IS ALPHABETIC OR                                   01920000
+019300*        CONTI = SPACES                OR                         01930000
+019400*        CONTI IS     LESS THAN 10     OR                         01940000
+019500*        SPL-CHARS             OR                                 01950000
+019600*        CONTI = ZERO                                             01960000
+019700*        MOVE LOW-VALUES TO BCRTMAPO                              01970000
+019800*        MOVE -1 TO CONTI                                         01980000
+019900*        MOVE 'CONT SHOULD BE NUMERIC AND LENGTH OF 10' TO MSG3O  01990000
+020000*     ELSE                                                        02000000
+020100*      IF EMAILI IS NUMERIC         OR                            02010000
+020200*         EMAILI = SPACES           OR                            02020000
+020300*         EMAILI = ZERO             OR                            02030000
+020400*         EMAILI IS ALPHABETIC      OR                            02040000
+020500*         NOT SPL-CHARS                                           02050000
+020600*         MOVE LOW-VALUES TO BCRTMAPO                             02060000
+020700*         MOVE -1 TO EMAILL                                       02070000
+020800*         MOVE 'EMAIL SHOULD BE ALPHANUMERIC AND WITH @ ' TO MSG3O02080000
+020900*      ELSE                                                       02090000
+021000*      IF DOBMMI = SPACES OR DOBMMI = ZERO OR                     02100000
+021100*         DOBMMI IS ALPHABETIC OR                                 02110000
+021200*         DOBMMI IS NOT LESS THAN 13 OR SPL-CHARS                 02120000
+021300*         MOVE LOW-VALUES TO BCRTMAPO                             02130000
+021400*         MOVE -1 TO DOBMML                                       02140000
+021500*        MOVE 'MONTH SHOULD NUMERIC & VALUE LESS THAN 13' TO MSG3O02150000
+021600*      ELSE                                                       02160000
+021700*      IF DOBDDI = SPACES OR DOBDDI = ZERO OR                     02170000
+021800*         DOBDDI IS ALPHABETIC OR                                 02180000
+021900*         DOBDDI IS NOT LESS THAN 31 OR                           02190000
+022000*         SPL-CHARS                                               02200000
+022100*         MOVE LOW-VALUES TO BCRTMAPO                             02210000
+022200*         MOVE -1 TO DOBDDL                                       02220000
+022300*         MOVE 'DAY SHOULD NUM AND DATE LESS THAN 31' TO MSG3O    02230000
+022400*      ELSE                                                       02240000
+022500*      IF DOBYYI = SPACES OR DOBYYI = ZERO OR                     02250000
+022600*         DOBYYI IS ALPHABETIC OR                                 02260000
+022700*         DOBYYI IS NOT LESS THAN 1997 OR                         02270000
+022800*         DOBYYI IS LESS THAN 1960                                02280000
+022900*         OR  SPL-CHARS                                           02290000
+023000*         MOVE LOW-VALUES TO BCRTMAPO                             02300000
+023100*         MOVE -1 TO DOBYYL                                       02310000
+023200*         MOVE 'DOBYY SHOULD NUMERIC' TO MSG3O                    02320000
+023300*      ELSE                                                       02330000
+023400*      IF EARNI = SPACES OR EARNI = ZERO OR                       02340000
+023500*         EARNI IS ALPHABETIC OR                                  02350000
+023600*         EARNI IS NOT GREATER THAN 10000 OR                      02360000
+023700*         SPL-CHARS                                               02370000
+023800*         MOVE LOW-VALUES TO BCRTMAPO                             02380000
+023900*         MOVE -1 TO EARNL                                        02390000
+024000*        MOVE 'EARNINGS MUST BE NUM & GREATER THAN 10000' TO MSG3O02400000
+024100*      ELSE                                                       02410000
+024200*      IF DEDNI = SPACES OR DEDNI = ZERO OR                       02420000
+024300*         DEDNI IS ALPHABETIC OR                                  02430000
+024400*         SPL-CHARS OR                                            02440000
+024500*         DEDNI IS NOT LESS THAN EARNI                            02450000
+024600*         MOVE LOW-VALUES TO BCRTMAPO                             02460000
+024700*         MOVE -1 TO EARNL                                        02470000
+024800*        MOVE 'DEDUCTIONS IS NUM & LESS THAN EARNING ' TO MSG3O   02480000
+024900*     END-IF                                                      02490000
+025000*     MOVE 'Y' TO WS-VALID-FLAG.                                  02500000
